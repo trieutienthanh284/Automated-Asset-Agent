@@ -8,9 +8,8 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
-# Import thư viện "Kính phiên dịch" SVG
 try:
-    import fitz  # PyMuPDF
+    import fitz  # Thư viện đọc SVG (PyMuPDF)
 except ImportError:
     fitz = None
 
@@ -36,10 +35,6 @@ def sort_images(input_dir, base_output_dir, target_topic):
         print("❌ Lỗi: Không tìm thấy GEMINI_API_KEY trong file .env.")
         return
 
-    if not fitz:
-        print("❌ HỆ THỐNG THIẾU THƯ VIỆN! Hãy mở Terminal và chạy: pip install pymupdf")
-        return
-
     client = genai.Client(api_key=API_KEY)
     print(f"🤖 AI Agent khởi động. Lọc theo chủ đề: '{target_topic}'...\n")
 
@@ -60,7 +55,6 @@ def sort_images(input_dir, base_output_dir, target_topic):
             os.remove(file_path)
             continue
 
-        # Chặn các đuôi lạ không nằm trong cả 2 danh sách
         if ext not in config.SUPPORTED_EXTENSIONS and ext not in config.VECTOR_EXTENSIONS:
             print(f"⏩ Đưa vào khu cách ly: {filename} (Định dạng {ext} không hỗ trợ)")
             shutil.move(file_path, os.path.join(quarantine_dir, filename))
@@ -68,27 +62,23 @@ def sort_images(input_dir, base_output_dir, target_topic):
 
         print(f"👀 Đang đưa cho AI phân tích sâu: {filename}...")
 
-        upload_target = file_path  # Mặc định file đưa cho AI xem chính là file gốc
-        temp_render_path = None  # Đường dẫn ảnh tạm (nếu là SVG)
+        upload_target = file_path
+        temp_render_path = None
 
         try:
-            # ẢO THUẬT: NẾU LÀ SVG, DỰNG HÌNH THÀNH PNG TẠM THỜI
             if ext in config.VECTOR_EXTENSIONS:
+                if not fitz:
+                    raise Exception("Thiếu thư viện PyMuPDF để đọc SVG.")
                 print(f"   🔄 Đang đeo 'kính phiên dịch' cho AI đọc file Vector...")
                 short_hash = generate_short_hash(file_path)
                 temp_render_path = os.path.join(input_dir, f"temp_vision_{short_hash}.png")
 
-                # Dùng PyMuPDF đọc SVG và xuất ra PNG
                 doc = fitz.open(file_path)
                 pix = doc[0].get_pixmap()
                 pix.save(temp_render_path)
-
-                # Đổi mục tiêu đưa cho AI xem thành ảnh PNG tạm thời
                 upload_target = temp_render_path
 
-            # Gọi AI phân tích (nó sẽ nhìn thấy PNG thật hoặc PNG tạm)
             sample_file = client.files.upload(file=upload_target)
-
             prompt = config.AGENT_PROMPT_TEMPLATE.format(target_topic=target_topic)
 
             response = client.models.generate_content(
@@ -97,11 +87,9 @@ def sort_images(input_dir, base_output_dir, target_topic):
                 config=types.GenerateContentConfig(response_mime_type="application/json")
             )
 
-            # DỌN DẸP ẢNH TẠM NGAY LẬP TỨC ĐỂ TRÁNH RÁC Ổ CỨNG
             if temp_render_path and os.path.exists(temp_render_path):
                 os.remove(temp_render_path)
 
-            # Bọc thép JSON & Sửa lỗi chính tả
             raw_text = response.text
             match = re.search(r'\{.*\}', raw_text, re.DOTALL)
 
@@ -110,10 +98,10 @@ def sort_images(input_dir, base_output_dir, target_topic):
                 json_str = json_str.replace("True", "true").replace("False", "false").replace("'", '"')
                 try:
                     result = json.loads(json_str)
-                except json.JSONDecodeError as je:
-                    raise ValueError(f"AI trả về JSON sai cú pháp.")
+                except json.JSONDecodeError:
+                    raise ValueError("AI trả về JSON sai cú pháp.")
             else:
-                raise ValueError(f"AI không trả về JSON hợp lệ.")
+                raise ValueError("AI không trả về JSON hợp lệ.")
 
             is_matched = result.get("is_matched", False)
             if isinstance(is_matched, str):
@@ -125,7 +113,6 @@ def sort_images(input_dir, base_output_dir, target_topic):
                 client.files.delete(name=sample_file.name)
                 continue
 
-            # Định tuyến động (AI tự nghĩ ra category)
             category = result.get("category", "others").lower().strip()
             category = re.sub(r'[^a-z0-9_]', '', category)
             if not category: category = "others"
@@ -135,7 +122,6 @@ def sort_images(input_dir, base_output_dir, target_topic):
             short_hash = generate_short_hash(file_path)
             safe_topic = "".join([c for c in target_topic if c.isalnum()]).lower()
 
-            # GIỮ NGUYÊN ĐUÔI FILE GỐC (Sẽ lưu .svg chứ không phải ảnh tạm)
             file_tag = category[:-1] if category.endswith('s') else category
             new_filename = f"{safe_topic}_{file_tag}_{main_color}_{keywords}_{short_hash}{ext}"
 
@@ -148,7 +134,6 @@ def sort_images(input_dir, base_output_dir, target_topic):
             if not os.path.exists(gitkeep_path):
                 with open(gitkeep_path, "w") as f: pass
 
-            # Di chuyển FILE GỐC (.svg hoặc .png) sang nhà mới
             shutil.move(file_path, os.path.join(target_dir, new_filename))
 
             try:
@@ -156,15 +141,17 @@ def sort_images(input_dir, base_output_dir, target_topic):
             except:
                 pass
 
-            print(f"   ⏳ Nghỉ {config.RATE_LIMIT_SLEEP} giây để tránh quá tải API...")
-            time.sleep(config.RATE_LIMIT_SLEEP)
-
         except Exception as e:
+            # Nếu sập API (Lỗi 429), nó sẽ báo ở đây nhưng VẪN PHẢI NGHỈ
             print(f"   ❌ LỖI KỸ THUẬT: {e}")
-            # Nếu có lỗi mà ảnh tạm vẫn còn, xóa nó đi
             if temp_render_path and os.path.exists(temp_render_path):
                 os.remove(temp_render_path)
             shutil.move(file_path, os.path.join(quarantine_dir, filename))
+
+        finally:
+            # CHỐT CHẶN AN TOÀN: Code có lỗi hay chạy đúng thì vẫn bắt buộc dừng 15s
+            print(f"   ⏳ Nghỉ {config.RATE_LIMIT_SLEEP} giây để reset Quota API...")
+            time.sleep(config.RATE_LIMIT_SLEEP)
 
     print("\n🎉 HOÀN TẤT PHÂN LOẠI!")
     sync()
