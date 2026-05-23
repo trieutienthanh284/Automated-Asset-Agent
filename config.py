@@ -8,7 +8,7 @@ SUPPORTED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp']
 
 # 2. QUY CHUẨN LỌC RÁC (Đã điều chỉnh cho Thumbnail)
 # Hạ từ 15KB xuống 5KB để bắt được các ảnh thu nhỏ chất lượng của Wikipedia
-MIN_FILE_SIZE_KB = 5
+MIN_FILE_SIZE_KB = 1
 
 # 3. QUY CHUẨN XỬ LÝ NGOẠI LỆ (.SVG)
 VECTOR_EXTENSIONS = ['.svg']
