@@ -2,6 +2,7 @@ import os
 import shutil
 import json
 import time
+import re  # Thư viện Regex để bọc thép JSON
 import hashlib
 from google import genai
 from google.genai import types
@@ -44,19 +45,16 @@ def sort_images(input_dir, base_output_dir, target_topic):
         ext = os.path.splitext(filename)[1].lower()
         file_size_kb = os.path.getsize(file_path) / 1024
 
-        # KIỂM TRA LUẬT 2: LỌC RÁC DUNG LƯỢNG THẤP
         if file_size_kb < config.MIN_FILE_SIZE_KB:
             print(f"🗑️ Đang xóa rác: {filename} ({file_size_kb:.1f} KB)")
             os.remove(file_path)
             continue
 
-        # [ĐÃ SỬA] KIỂM TRA LUẬT 3: KHÔNG CHO PHÉP ĐI CỬA HẬU
         if ext in config.VECTOR_EXTENSIONS:
             print(f"⚠️ Từ chối đặc quyền: {filename} (AI không thể phân tích file code Vector .svg)")
             shutil.move(file_path, os.path.join(quarantine_dir, filename))
             continue
 
-        # KIỂM TRA LUẬT 1: CHẶN ĐUÔI FILE LẠ KHÔNG HỖ TRỢ
         if ext not in config.SUPPORTED_EXTENSIONS:
             print(f"⏩ Đưa vào khu cách ly: {filename} (Định dạng {ext} không hỗ trợ)")
             shutil.move(file_path, os.path.join(quarantine_dir, filename))
@@ -65,7 +63,6 @@ def sort_images(input_dir, base_output_dir, target_topic):
         print(f"👀 Đang đưa cho AI phân tích sâu: {filename}...")
 
         try:
-            # Truyền chuẩn theo SDK mới bằng file_path=
             sample_file = client.files.upload(file_path=file_path)
             categories_str = ", ".join(config.ALLOWED_CATEGORIES)
 
@@ -80,14 +77,17 @@ def sort_images(input_dir, base_output_dir, target_topic):
                 config=types.GenerateContentConfig(response_mime_type="application/json")
             )
 
-            # Làm sạch chuỗi JSON phòng hờ lỗi
-            raw_text = response.text.strip()
-            if raw_text.startswith("```json"):
-                raw_text = raw_text[7:]
-            if raw_text.endswith("```"):
-                raw_text = raw_text[:-3]
+            # --- KHU VỰC BỌC THÉP JSON BẰNG REGEX ---
+            raw_text = response.text
+            # Tìm chính xác cấu trúc { ... } kể cả khi AI nói nhảm bên ngoài
+            match = re.search(r'\{.*\}', raw_text, re.DOTALL)
 
-            result = json.loads(raw_text.strip())
+            if match:
+                json_str = match.group(0)
+                result = json.loads(json_str)
+            else:
+                raise ValueError(f"AI không trả về JSON hợp lệ: {raw_text}")
+            # ----------------------------------------
 
             is_matched = result.get("is_matched", False)
             if not is_matched:
@@ -100,16 +100,22 @@ def sort_images(input_dir, base_output_dir, target_topic):
             if category not in config.ALLOWED_CATEGORIES:
                 category = "others"
 
+            # TRÍCH XUẤT THÔNG TIN ĐỂ ĐẶT TÊN
             main_color = result.get("main_color", "unknown").lower().replace(" ", "")
             keywords = result.get("keywords", "asset").lower().replace(" ", "_")
             short_hash = generate_short_hash(file_path)
             safe_topic = "".join([c for c in target_topic if c.isalnum()]).lower()
 
-            new_filename = f"{safe_topic}_{main_color}_{keywords}_{short_hash}{ext}"
+            # TẠO THẺ TÊN TỪ THƯ MỤC (Ví dụ: Thư mục 'logos' -> thẻ tên 'logo')
+            file_tag = category[:-1] if category.endswith('s') else category
+
+            # CÔNG THỨC TÊN MỚI: [Chủ_đề]_[Thẻ_loại]_[Màu]_[Từ_khóa]_[Mã].jpg
+            new_filename = f"{safe_topic}_{file_tag}_{main_color}_{keywords}_{short_hash}{ext}"
+
             print(f"   -> Khớp! Đưa vào [{category}] | Tên mới: {new_filename}")
 
             target_dir = os.path.join(base_output_dir, category)
-            os.makedirs(target_dir, exist_ok=True)  # Đảm bảo thư mục luôn được tạo
+            os.makedirs(target_dir, exist_ok=True)
 
             shutil.move(file_path, os.path.join(target_dir, new_filename))
             client.files.delete(name=sample_file.name)
