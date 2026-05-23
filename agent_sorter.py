@@ -63,7 +63,7 @@ def sort_images(input_dir, base_output_dir, target_topic):
         print(f"👀 Đang đưa cho AI phân tích sâu: {filename}...")
 
         try:
-            sample_file = client.files.upload(file_path=file_path)
+            sample_file = client.files.upload(file=file_path)
 
             # Khởi tạo prompt mà không cần truyền mảng category cố định nữa
             prompt = config.AGENT_PROMPT_TEMPLATE.format(target_topic=target_topic)
