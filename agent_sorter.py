@@ -44,20 +44,21 @@ def sort_images(input_dir, base_output_dir, target_topic):
         ext = os.path.splitext(filename)[1].lower()
         file_size_kb = os.path.getsize(file_path) / 1024
 
+        # KIỂM TRA LUẬT 2: LỌC RÁC DUNG LƯỢNG THẤP
         if file_size_kb < config.MIN_FILE_SIZE_KB:
             print(f"🗑️ Đang xóa rác: {filename} ({file_size_kb:.1f} KB)")
             os.remove(file_path)
             continue
 
+        # [ĐÃ SỬA] KIỂM TRA LUẬT 3: KHÔNG CHO PHÉP ĐI CỬA HẬU
         if ext in config.VECTOR_EXTENSIONS:
-            print(f"⚡ Đẩy thẳng file Vector: {filename} vào kho")
-            target_dir = os.path.join(base_output_dir, config.VECTOR_DEFAULT_DIR)
-            os.makedirs(target_dir, exist_ok=True)
-            shutil.move(file_path, os.path.join(target_dir, filename))
+            print(f"⚠️ Từ chối đặc quyền: {filename} (AI không thể phân tích file code Vector .svg)")
+            shutil.move(file_path, os.path.join(quarantine_dir, filename))
             continue
 
+        # KIỂM TRA LUẬT 1: CHẶN ĐUÔI FILE LẠ KHÔNG HỖ TRỢ
         if ext not in config.SUPPORTED_EXTENSIONS:
-            print(f"⏩ Đưa vào khu cách ly: {filename}")
+            print(f"⏩ Đưa vào khu cách ly: {filename} (Định dạng {ext} không hỗ trợ)")
             shutil.move(file_path, os.path.join(quarantine_dir, filename))
             continue
 
