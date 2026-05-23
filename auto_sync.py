@@ -15,7 +15,8 @@ COMMIT_MESSAGES = {
 
 
 def run_git(args):
-    return subprocess.run(["git"] + args, cwd=PROJECT_ROOT, capture_output=True, text=True)
+    # Thêm encoding="utf-8" và errors="replace" để chống vỡ font trên Windows
+    return subprocess.run(["git"] + args, cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
 
 
 def sync():
