@@ -1,38 +1,38 @@
 # ==========================================
-# SỔ TAY QUY CHUẨN CHO HỆ THỐNG AGENT (V2.2)
-# Tối ưu hóa phân tích dữ liệu Wikipedia & Cảnh quan
+# SỔ TAY QUY CHUẨN CHO HỆ THỐNG AGENT (V2.3)
 # ==========================================
 
-# 1. QUY CHUẨN ĐẦU VÀO
 SUPPORTED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp']
-
-# 2. QUY CHUẨN LỌC RÁC (Đã điều chỉnh cho Thumbnail)
-# Hạ từ 15KB xuống 5KB để bắt được các ảnh thu nhỏ chất lượng của Wikipedia
-MIN_FILE_SIZE_KB = 1
-
-# 3. QUY CHUẨN XỬ LÝ NGOẠI LỆ (.SVG)
+MIN_FILE_SIZE_KB = 1  # Giữ mức 1KB để không bỏ sót thumbnail Wikipedia
 VECTOR_EXTENSIONS = ['.svg']
 VECTOR_DEFAULT_DIR = 'icons'
-
-# 4. QUY CHUẨN NHỊP ĐỘ (Tránh sập API)
 RATE_LIMIT_SLEEP = 12
 
-# 5. QUY CHUẨN CẤU TRÚC KHO TÀI NGUYÊN
-# Đã thêm 'places' để chứa Sân vận động, Tòa nhà, Phong cảnh
-ALLOWED_CATEGORIES = ['logos', 'icons', 'backgrounds', 'characters', 'places', 'others']
+# BỔ SUNG DANH MỤC CHI TIẾT ĐỂ AI PHÂN LOẠI CHUẨN XÁC HƠN
+ALLOWED_CATEGORIES = [
+    'logos',        # Logo, huy hiệu, biểu tượng chính thức
+    'icons',        # Icon nhỏ, ký hiệu, nút bấm
+    'backgrounds',  # Hình nền, họa tiết, texture
+    'characters',   # Con người, nhân vật, cầu thủ, diễn viên
+    'places',       # Địa điểm, kiến trúc, sân vận động, thành phố
+    'animals',      # Động vật, thú cưng, sinh vật
+    'nature',       # Cây cối, phong cảnh thiên nhiên, núi rừng
+    'vehicles',     # Xe cộ, máy bay, tàu thuyền
+    'objects',      # Đồ vật cụ thể (cup, bóng, điện thoại, máy móc)
+    'others'        # Không thuộc các nhóm trên
+]
 
-# 6. BỘ PROMPT NÂNG CẤP ĐỂ ĐẶT TÊN VÀ LỌC THEO CHỦ ĐỀ
 AGENT_PROMPT_TEMPLATE = """
 Bạn là chuyên gia phân tích và quản lý tài nguyên thiết kế hiệu năng cao.
 Hãy phân tích bức ảnh được cung cấp dựa trên chủ đề mục tiêu: "{target_topic}".
 
 Nhiệm vụ của bạn:
-1. Kiểm tra xem bức ảnh này có liên quan hoặc chứa nội dung thuộc chủ đề "{target_topic}" hay không (Trả về True/False ở trường "is_matched"). (Ví dụ: Nếu chủ đề là "sân vận động", ảnh khán đài, mặt cỏ, hoặc toàn cảnh sân đều được tính là True).
-2. Nếu "is_matched" là True, hãy phân loại nó vào một trong các thư mục sau: {categories}. (Gợi ý: Sân vận động/cảnh quan chọn 'places', người/cầu thủ chọn 'characters', biểu tượng chọn 'logos').
-3. Phân tích nội dung để trích xuất 2-3 từ khóa ngắn gọn mô tả bức ảnh (bằng tiếng Anh hoặc tiếng Việt không dấu, viết thường, cách nhau bằng dấu gạch dưới).
+1. Kiểm tra xem bức ảnh này có liên quan hoặc chứa nội dung thuộc chủ đề "{target_topic}" hay không (Trả về True/False ở trường "is_matched"). Hãy linh hoạt: ví dụ chủ đề là 'thể thao' thì sân vận động, cầu thủ, hay cup đều là True.
+2. Nếu "is_matched" là True, hãy phân loại nó vào MỘT trong các thư mục chính xác sau: {categories}. 
+3. Phân tích nội dung để trích xuất 2-3 từ khóa ngắn gọn (bằng tiếng Anh hoặc tiếng Việt không dấu, viết thường, cách nhau bằng dấu gạch dưới).
 4. Xác định 1 màu sắc chủ đạo nổi bật nhất của bức ảnh (ví dụ: red, blue, green, white, black...).
 
-Trả về đúng 1 cấu trúc định dạng JSON duy nhất không kèm từ ngữ giải thích nào khác ở ngoài:
+Trả về đúng 1 cấu trúc định dạng JSON duy nhất, TUYỆT ĐỐI không giải thích thêm:
 {{
     "is_matched": true/false,
     "category": "tên_thư_mục_phù_hợp",
