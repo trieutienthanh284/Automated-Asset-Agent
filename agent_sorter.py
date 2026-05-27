@@ -1,22 +1,24 @@
 import os
 import shutil
-import json
-import time
-import re
 import hashlib
-from google import genai
-from google.genai import types
+from PIL import Image
 from dotenv import load_dotenv
-
-try:
-    import fitz  # Thư viện đọc SVG (PyMuPDF)
-except ImportError:
-    fitz = None
 
 import config
 from auto_sync import sync
 
-load_dotenv()
+try:
+    import fitz
+except ImportError:
+    fitz = None
+
+import torch
+from transformers import CLIPProcessor, CLIPModel
+
+print("⏳ [HỆ THỐNG V4.0] Đang nạp mô hình Trí tuệ Nhân tạo OpenAI CLIP vào bộ nhớ...")
+model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+print("✅ Nạp AI thành công! Sẵn sàng duyệt ảnh với tốc độ ánh sáng.")
 
 
 def generate_short_hash(file_path):
@@ -30,14 +32,6 @@ def generate_short_hash(file_path):
 
 
 def sort_images(input_dir, base_output_dir, target_topic):
-    API_KEY = os.environ.get("GEMINI_API_KEY")
-    if not API_KEY:
-        print("❌ Lỗi: Không tìm thấy GEMINI_API_KEY trong file .env.")
-        return
-
-    client = genai.Client(api_key=API_KEY)
-    print(f"🤖 AI Agent khởi động. Lọc theo chủ đề: '{target_topic}'...\n")
-
     if not os.path.exists(input_dir): return
 
     quarantine_dir = os.path.join(base_output_dir, 'unprocessed')
@@ -50,84 +44,65 @@ def sort_images(input_dir, base_output_dir, target_topic):
         ext = os.path.splitext(filename)[1].lower()
         file_size_kb = os.path.getsize(file_path) / 1024
 
-        if file_size_kb < config.MIN_FILE_SIZE_KB:
-            print(f"🗑️ Đang xóa rác: {filename} ({file_size_kb:.1f} KB)")
+        if file_size_kb == 0:
+            os.remove(file_path)
+            continue
+        elif config.MIN_FILE_SIZE_KB > 0 and file_size_kb < config.MIN_FILE_SIZE_KB:
             os.remove(file_path)
             continue
 
         if ext not in config.SUPPORTED_EXTENSIONS and ext not in config.VECTOR_EXTENSIONS:
-            print(f"⏩ Đưa vào khu cách ly: {filename} (Định dạng {ext} không hỗ trợ)")
             shutil.move(file_path, os.path.join(quarantine_dir, filename))
             continue
 
-        print(f"👀 Đang đưa cho AI phân tích sâu: {filename}...")
-
-        upload_target = file_path
         temp_render_path = None
-
         try:
             if ext in config.VECTOR_EXTENSIONS:
                 if not fitz:
-                    raise Exception("Thiếu thư viện PyMuPDF để đọc SVG.")
-                print(f"   🔄 Đang đeo 'kính phiên dịch' cho AI đọc file Vector...")
+                    raise Exception("Thiếu PyMuPDF")
                 short_hash = generate_short_hash(file_path)
                 temp_render_path = os.path.join(input_dir, f"temp_vision_{short_hash}.png")
-
                 doc = fitz.open(file_path)
                 pix = doc[0].get_pixmap()
                 pix.save(temp_render_path)
-                upload_target = temp_render_path
+                target_image_path = temp_render_path
+            else:
+                target_image_path = file_path
 
-            sample_file = client.files.upload(file=upload_target)
-            prompt = config.AGENT_PROMPT_TEMPLATE.format(target_topic=target_topic)
+            image = Image.open(target_image_path).convert("RGB")
 
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=[sample_file, prompt],
-                config=types.GenerateContentConfig(response_mime_type="application/json")
-            )
+            # TRỘN DANH SÁCH: YAML tĩnh + Từ khóa bạn vừa nhập từ bàn phím
+            dynamic_labels = config.CATEGORIES.copy()
+            if target_topic and target_topic.lower() not in [l.lower() for l in dynamic_labels]:
+                dynamic_labels.append(target_topic.lower())
+
+            inputs = processor(text=dynamic_labels, images=image, return_tensors="pt", padding=True)
+            outputs = model(**inputs)
+            logits_per_image = outputs.logits_per_image
+            probs = logits_per_image.softmax(dim=1)
+
+            best_prob = probs.max().item()
+            best_idx = probs.argmax().item()
+            best_category_raw = dynamic_labels[best_idx]
 
             if temp_render_path and os.path.exists(temp_render_path):
                 os.remove(temp_render_path)
 
-            raw_text = response.text
-            match = re.search(r'\{.*\}', raw_text, re.DOTALL)
-
-            if match:
-                json_str = match.group(0)
-                json_str = json_str.replace("True", "true").replace("False", "false").replace("'", '"')
-                try:
-                    result = json.loads(json_str)
-                except json.JSONDecodeError:
-                    raise ValueError("AI trả về JSON sai cú pháp.")
-            else:
-                raise ValueError("AI không trả về JSON hợp lệ.")
-
-            is_matched = result.get("is_matched", False)
-            if isinstance(is_matched, str):
-                is_matched = is_matched.lower() == 'true'
-
-            if not is_matched:
-                print(f"   ❌ Không khớp chủ đề [{target_topic}] -> Đẩy vào unprocessed.")
+            if best_prob < config.CONFIDENCE_THRESHOLD:
+                print(f"   ❌ {filename} -> Từ chối (Khớp cao nhất: {best_prob * 100:.1f}%)")
                 shutil.move(file_path, os.path.join(quarantine_dir, filename))
-                client.files.delete(name=sample_file.name)
                 continue
 
-            category = result.get("category", "others").lower().strip()
-            category = re.sub(r'[^a-z0-9_]', '', category)
-            if not category: category = "others"
+            folder_name = best_category_raw.replace(" ", "_")
+            if not folder_name.endswith('s'): folder_name += 's'
 
-            main_color = result.get("main_color", "unknown").lower().replace(" ", "")
-            keywords = result.get("keywords", "asset").lower().replace(" ", "_")
             short_hash = generate_short_hash(file_path)
-            safe_topic = "".join([c for c in target_topic if c.isalnum()]).lower()
+            safe_topic = "".join([c for c in target_topic if c.isalnum()]).lower() if target_topic else "asset"
+            new_filename = f"{safe_topic}_{folder_name}_{short_hash}{ext}"
 
-            file_tag = category[:-1] if category.endswith('s') else category
-            new_filename = f"{safe_topic}_{file_tag}_{main_color}_{keywords}_{short_hash}{ext}"
+            print(f"   ✅ {filename} -> [{folder_name}] (Độ tin cậy: {best_prob * 100:.1f}%)")
 
-            print(f"   -> Khớp! Đưa vào [{category}] | Tên mới: {new_filename}")
-
-            target_dir = os.path.join(base_output_dir, category)
+            target_dir = os.path.join(base_output_dir, folder_name)
             os.makedirs(target_dir, exist_ok=True)
 
             gitkeep_path = os.path.join(target_dir, ".gitkeep")
@@ -136,26 +111,15 @@ def sort_images(input_dir, base_output_dir, target_topic):
 
             shutil.move(file_path, os.path.join(target_dir, new_filename))
 
-            try:
-                client.files.delete(name=sample_file.name)
-            except:
-                pass
-
         except Exception as e:
-            # Nếu sập API (Lỗi 429), nó sẽ báo ở đây nhưng VẪN PHẢI NGHỈ
-            print(f"   ❌ LỖI KỸ THUẬT: {e}")
+            print(f"   ❌ LỖI XỬ LÝ {filename}: {e}")
             if temp_render_path and os.path.exists(temp_render_path):
                 os.remove(temp_render_path)
             shutil.move(file_path, os.path.join(quarantine_dir, filename))
 
-        finally:
-            # CHỐT CHẶN AN TOÀN: Code có lỗi hay chạy đúng thì vẫn bắt buộc dừng 15s
-            print(f"   ⏳ Nghỉ {config.RATE_LIMIT_SLEEP} giây để reset Quota API...")
-            time.sleep(config.RATE_LIMIT_SLEEP)
-
-    print("\n🎉 HOÀN TẤT PHÂN LOẠI!")
+    print("\n🎉 HOÀN TẤT PHÂN LOẠI NHANH!")
     sync()
 
 
-def run_sorter(target_topic="thể thao"):
+def run_sorter(target_topic=""):
     sort_images('temp_images', 'resource', target_topic)
