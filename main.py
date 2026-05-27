@@ -7,14 +7,13 @@ from agent_sorter import run_sorter
 
 
 def setup_environment():
-    """Chỉ tạo các thư mục cốt lõi, các thư mục danh mục sẽ do AI tự tạo"""
     os.makedirs("temp_images", exist_ok=True)
     os.makedirs("resource/unprocessed", exist_ok=True)
 
 
 def main():
     print("============================================================")
-    print("🚀 [HỆ THỐNG AGENT THÔNG MINH V3] Định tuyến động...")
+    print("🚀 [HỆ THỐNG AGENT V4.0] Phân loại Offline bằng Computer Vision")
     print("============================================================")
 
     setup_environment()
@@ -23,16 +22,14 @@ def main():
     if not URL_MUC_TIEU:
         URL_MUC_TIEU = "https://vi.wikipedia.org/wiki/Giải_vô_địch_bóng_đá_thế_giới_2026"
 
-    CHU_DE_MUC_TIEU = input("🎯 Nhập chủ đề bạn muốn lọc (VD: cauthu, thethao...): ").strip()
-    if not CHU_DE_MUC_TIEU:
-        CHU_DE_MUC_TIEU = "thể thao"
+    CHU_DE_MUC_TIEU = input("🎯 Chủ đề phụ bạn muốn tìm thêm (Enter để bỏ qua): ").strip()
 
     FILE_CSV = "image_links.csv"
     KHO_TAM = "temp_images"
     GIOI_HAN_TAI = 30
 
     start_time = datetime.now()
-    print(f"\n⏰ Bắt đầu lúc: {start_time.strftime('%H:%M:%S')} | Chủ đề: [{CHU_DE_MUC_TIEU.upper()}]")
+    print(f"\n⏰ Bắt đầu lúc: {start_time.strftime('%H:%M:%S')}")
     print("-" * 60)
 
     try:
@@ -42,13 +39,13 @@ def main():
         print("\n📥 GIAI ĐOẠN 2: Agent Downloader đang tải ảnh nháp...")
         download_images(FILE_CSV, KHO_TAM, limit=GIOI_HAN_TAI)
 
-        print("\n🤖 GIAI ĐOẠN 3: AI phân tích sâu & Tự tạo thư mục...")
+        print("\n🤖 GIAI ĐOẠN 3: AI CLIP phân tích Offline...")
         run_sorter(target_topic=CHU_DE_MUC_TIEU)
 
         end_time = datetime.now()
         duration = end_time - start_time
         print("\n" + "=" * 60)
-        print(f"🎉 HOÀN TẤT THÀNH CÔNG! Đã phân loại động và đồng bộ GitHub.")
+        print(f"🎉 HOÀN TẤT THÀNH CÔNG! Đã phân loại và đồng bộ GitHub.")
         print(f"⏱️ Tổng thời gian vận hành: {duration.seconds} giây.")
         print("=" * 60)
 
