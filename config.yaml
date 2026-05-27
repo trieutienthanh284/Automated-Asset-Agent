@@ -1,0 +1,77 @@
+# ==========================================
+# CẤU HÌNH HỆ THỐNG V4.0 (MASTER TAXONOMY)
+# Phân loại đa miền bao phủ 99% dữ liệu Web
+# ==========================================
+system:
+  min_file_size_kb: 0
+  supported_extensions: ['.png', '.jpg', '.jpeg', '.webp']
+  vector_extensions: ['.svg']
+  vector_dir: 'vectors'
+
+classification:
+  # HẠ NGƯỠNG TỰ TIN: Khi có nhiều nhãn, điểm sẽ bị chia nhỏ.
+  # 0.08 (8%) là mức hợp lý cho danh sách 60+ nhãn.
+  confidence_threshold: 0.08
+
+  candidate_labels:
+    # --- 1. NHÓM CON NGƯỜI & HOẠT ĐỘNG ---
+    - "portrait of a person"
+    - "crowd of people"
+    - "business people or office"
+    - "soccer player"
+    - "athlete playing sports"
+    - "musical performer or concert"
+    - "military personnel"
+
+    # --- 2. NHÓM KIẾN TRÚC & ĐỊA ĐIỂM ---
+    - "stadium or sports arena"
+    - "city skyline or cityscape"
+    - "exterior building architecture"
+    - "interior room or house"
+    - "historic monument or landmark"
+    - "bridge or structural engineering"
+    - "street view or road"
+
+    # --- 3. NHÓM THIÊN NHIÊN & VŨ TRỤ ---
+    - "nature landscape"
+    - "mountain or hill"
+    - "beach, ocean or water"
+    - "forest or trees"
+    - "sky and clouds"
+    - "space, galaxy or astronomy"
+    - "flower or plant"
+
+    # --- 4. NHÓM ĐỘNG VẬT ---
+    - "domestic pet animal"
+    - "wildlife animal"
+    - "bird flying or perched"
+    - "fish or marine life"
+    - "insect or bug"
+
+    # --- 5. NHÓM CÔNG NGHỆ & XE CỘ ---
+    - "car or automobile"
+    - "airplane or aviation"
+    - "train or railway"
+    - "ship or boat"
+    - "smartphone or computer device"
+    - "machinery or industrial equipment"
+    - "robotics or artificial intelligence"
+
+    # --- 6. NHÓM ĐỒ VẬT TĨNH (STILL LIFE) ---
+    - "food or drink"
+    - "clothing, apparel or fashion"
+    - "furniture or home appliance"
+    - "weapon or military equipment"
+    - "sports equipment or ball"
+    - "musical instrument"
+    - "trophy, medal or award"
+
+    # --- 7. NHÓM TÀI NGUYÊN THIẾT KẾ (UI/UX) ---
+    - "logo, brand identity or icon"
+    - "national flag"
+    - "map or geography"
+    - "infographic, chart or graph"
+    - "document, text or screenshot"
+    - "abstract background or pattern"
+    - "3d render or digital art"
+    - "cartoon, anime or illustration"
