@@ -1,6 +1,6 @@
 # ==========================================
-# CẤU HÌNH HỆ THỐNG V4.0 (MASTER TAXONOMY)
-# Phân loại đa miền bao phủ 99% dữ liệu Web
+# CẤU HÌNH HỆ THỐNG V4.2 (ULTIMATE TAXONOMY)
+# Kiến trúc Từ điển Ngữ nghĩa (Key-Value)
 # ==========================================
 system:
   min_file_size_kb: 0
@@ -9,69 +9,94 @@ system:
   vector_dir: 'vectors'
 
 classification:
-  # HẠ NGƯỠNG TỰ TIN: Khi có nhiều nhãn, điểm sẽ bị chia nhỏ.
-  # 0.08 (8%) là mức hợp lý cho danh sách 60+ nhãn.
+  # Ngưỡng tự tin 8% là mức chuẩn xác khi AI phải chia điểm cho 40+ nhãn
   confidence_threshold: 0.08
 
+  # Cấu trúc TỐI ƯU:
+  # ten_thu_muc_ngan_gon : "Câu văn miêu tả chi tiết bằng tiếng Anh để CLIP đọc"
   candidate_labels:
     # --- 1. NHÓM CON NGƯỜI & HOẠT ĐỘNG ---
-    - "portrait of a person"
-    - "crowd of people"
-    - "business people or office"
-    - "soccer player"
-    - "athlete playing sports"
-    - "musical performer or concert"
-    - "military personnel"
+    portrait: "a clear portrait photo of a person's face"
+    crowd: "a photo of a large crowd of people"
+    business: "a photo of business people or an office environment"
+    soccer_player: "a photo of a soccer player or football athlete in action"
+    athlete: "a photo of an athlete playing sports"
+    musician: "a photo of a musical performer or concert"
+    military: "a photo of military personnel or soldiers"
 
     # --- 2. NHÓM KIẾN TRÚC & ĐỊA ĐIỂM ---
-    - "stadium or sports arena"
-    - "city skyline or cityscape"
-    - "exterior building architecture"
-    - "interior room or house"
-    - "historic monument or landmark"
-    - "bridge or structural engineering"
-    - "street view or road"
+    stadium: "a photo of a stadium, sports arena, or pitch"
+    cityscape: "a photo of a city skyline or cityscape"
+    architecture: "a photo of exterior building architecture"
+    interior: "a photo of an interior room or house"
+    landmark: "a photo of a historic monument or landmark"
+    bridge: "a photo of a bridge or structural engineering"
+    street: "a photo of a street view or road"
 
     # --- 3. NHÓM THIÊN NHIÊN & VŨ TRỤ ---
-    - "nature landscape"
-    - "mountain or hill"
-    - "beach, ocean or water"
-    - "forest or trees"
-    - "sky and clouds"
-    - "space, galaxy or astronomy"
-    - "flower or plant"
+    landscape: "a photo of a beautiful nature landscape"
+    mountain: "a photo of a mountain or hill"
+    water: "a photo of a beach, ocean, or body of water"
+    forest: "a photo of a forest or trees"
+    sky: "a photo of the sky and clouds"
+    space: "a photo of space, a galaxy, or astronomy"
+    plant: "a photo of a flower or plant"
 
     # --- 4. NHÓM ĐỘNG VẬT ---
-    - "domestic pet animal"
-    - "wildlife animal"
-    - "bird flying or perched"
-    - "fish or marine life"
-    - "insect or bug"
+    pet: "a photo of a domestic pet animal like a dog or cat"
+    wildlife: "a photo of a wildlife animal"
+    bird: "a photo of a bird flying or perched"
+    marine: "a photo of a fish or marine life"
+    insect: "a photo of an insect or bug"
 
     # --- 5. NHÓM CÔNG NGHỆ & XE CỘ ---
-    - "car or automobile"
-    - "airplane or aviation"
-    - "train or railway"
-    - "ship or boat"
-    - "smartphone or computer device"
-    - "machinery or industrial equipment"
-    - "robotics or artificial intelligence"
+    car: "a photo of a car or automobile"
+    airplane: "a photo of an airplane or aviation"
+    train: "a photo of a train or railway"
+    ship: "a photo of a ship or boat"
+    device: "a photo of a smartphone, screen, or computer device"
+    machinery: "a photo of machinery or industrial equipment"
+    robotics: "a photo of robotics or artificial intelligence"
 
     # --- 6. NHÓM ĐỒ VẬT TĨNH (STILL LIFE) ---
-    - "food or drink"
-    - "clothing, apparel or fashion"
-    - "furniture or home appliance"
-    - "weapon or military equipment"
-    - "sports equipment or ball"
-    - "musical instrument"
-    - "trophy, medal or award"
+    food: "a photo of food or drink"
+    fashion: "a photo of clothing, apparel, or fashion"
+    furniture: "a photo of furniture or home appliances"
+    weapon: "a photo of a weapon or military equipment"
+    sports_equipment: "a photo of sports equipment or a ball"
+    instrument: "a photo of a musical instrument"
+    trophy: "a photo of a championship trophy, medal, or award"
 
     # --- 7. NHÓM TÀI NGUYÊN THIẾT KẾ (UI/UX) ---
-    - "logo, brand identity or icon"
-    - "national flag"
-    - "map or geography"
-    - "infographic, chart or graph"
-    - "document, text or screenshot"
-    - "abstract background or pattern"
-    - "3d render or digital art"
-    - "cartoon, anime or illustration"
+    logo: "a clean digital graphic logo, brand identity, or icon"
+    flag: "a digital graphic of a national flag or banner"
+    map: "a digital map or geography infographic"
+    infographic: "an infographic, chart, or graph"
+    document: "a digital document, text, screenshot, or certificate"
+    abstract: "an abstract background, texture, or pattern"
+    digital_art: "a 3d render or digital art"
+    illustration: "a cartoon, anime, or drawn illustration"
+
+detection:
+  enabled: true
+  # Ngưỡng tự tin của YOLO (60% là mức an toàn để không bắt nhầm)
+  confidence_threshold: 0.60
+
+  # Chuyển đổi tên vật thể của YOLO thành tên Thư mục của chúng ta
+  yolo_mapping:
+    person: "characters"
+    sports ball: "sports_equipment"
+    car: "vehicles"
+    motorcycle: "vehicles"
+    airplane: "vehicles"
+    bus: "vehicles"
+    train: "vehicles"
+    bird: "animals"
+    cat: "animals"
+    dog: "animals"
+    horse: "animals"
+    bottle: "objects"
+    cup: "objects"
+    chair: "furnitures"
+    laptop: "devices"
+    cell phone: "devices"
