@@ -1,47 +1,59 @@
 import os
 import csv
 import requests
+from urllib.parse import urlparse
 
-def download_images(csv_file, output_dir, limit=10):
-    print(f"📥 Agent đang chuẩn bị tải {limit} ảnh đầu tiên từ {csv_file}...")
+
+def download_images(csv_file, output_dir, limit=30):
+    """
+    [AGENT DOWNLOADER V4.3]
+    Tải ảnh nháp tốc độ cao từ file CSV. Chống treo máy và lọc file rác.
+    """
+    if not os.path.exists(csv_file):
+        print(f"   ❌ CẢNH BÁO: Không tìm thấy file {csv_file}. Agent Scraper đã thất bại ở Giai đoạn 1!")
+        return
 
     os.makedirs(output_dir, exist_ok=True)
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
+    count = 0
 
-    try:
-        with open(csv_file, mode='r', encoding='utf-8') as file:
-            reader = csv.DictReader(file)
-            count = 0
+    # Mở file CSV và tự động bỏ qua dòng tiêu đề (Header)
+    with open(csv_file, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        headers = next(reader, None)  # Bỏ qua chữ 'image_url'
 
-            for row in reader:
+        for row in reader:
+            if not row: continue
+            img_url = row[0]
+            if not img_url.startswith('http'): continue
+
+            try:
+                # Trích xuất tên file an toàn từ đường link
+                parsed = urlparse(img_url)
+                filename = os.path.basename(parsed.path)
+                if not filename: filename = f"asset_temp_{count}.jpg"
+
+                # Ép kiểu đuôi file an toàn
+                ext = os.path.splitext(filename)[1].lower()
+                if ext not in ['.jpg', '.jpeg', '.png', '.webp', '.svg']:
+                    filename += '.jpg'
+
+                file_path = os.path.join(output_dir, filename)
+
+                # Tải ảnh với giới hạn thời gian (Timeout) để chống treo hệ thống
+                response = requests.get(img_url, timeout=10)
+                if response.status_code == 200:
+                    with open(file_path, 'wb') as img_file:
+                        img_file.write(response.content)
+                    count += 1
+                    print(f"   📥 Đã tải thành công: {filename}")
+
                 if count >= limit:
                     break
+            except Exception as e:
+                # Bỏ qua các link chết hoặc lỗi kết nối
+                continue
 
-                img_url = row.get('URL')
-                if img_url:
-                    try:
-                        response = requests.get(img_url, headers=headers, timeout=10)
-                        response.raise_for_status()
-
-                        ext = img_url.split('.')[-1][:4]
-                        if ext.lower() not in ['png', 'jpg', 'jpeg', 'svg', 'gif', 'webp']:
-                            ext = 'png'
-
-                        filename = f"image_temp_{count + 1}.{ext}"
-                        filepath = os.path.join(output_dir, filename)
-
-                        with open(filepath, 'wb') as f:
-                            f.write(response.content)
-
-                        print(f"✅ Đã tải thành công: {filename}")
-                        count += 1
-
-                    except Exception as e:
-                        print(f"⚠️ Bỏ qua link bị lỗi. Chi tiết: {e}")
-
-            print(f"🎉 HOÀN TẤT! Đã đưa {count} ảnh vào thư mục '{output_dir}'. Sẵn sàng cho AI phân tích!")
-
-    except FileNotFoundError:
-        print(f"❌ Lỗi: Không tìm thấy file {csv_file}.")
+    if count == 0:
+        print("   ❌ CẢNH BÁO: File CSV có link nhưng Agent Downloader không thể tải được bức ảnh nào!")
+    else:
+        print(f"   ✅ [Downloader] Đã nạp thành công {count} ảnh vào trạm trung chuyển (temp_images).")
