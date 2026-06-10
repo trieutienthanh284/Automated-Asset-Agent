@@ -10,7 +10,7 @@ system:
 
 classification:
   # Ngưỡng tự tin 8% là mức chuẩn xác khi AI phải chia điểm cho 40+ nhãn
-  confidence_threshold: 0.25
+  confidence_threshold: 0.15
 
   # Cấu trúc TỐI ƯU:
   # ten_thu_muc_ngan_gon : "Câu văn miêu tả chi tiết bằng tiếng Anh để CLIP đọc"
