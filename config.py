@@ -15,3 +15,4 @@ CATEGORIES = cfg['classification']['candidate_labels']
 YOLO_ENABLED = cfg.get('detection', {}).get('enabled', False)
 YOLO_CONFIDENCE = cfg.get('detection', {}).get('confidence_threshold', 0.60)
 YOLO_MAPPING = cfg.get('detection', {}).get('yolo_mapping', {})
+YOLO_MIN_AREA_RATIO = cfg.get('detection', {}).get('min_area_ratio', 0.10)
