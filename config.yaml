@@ -83,6 +83,7 @@ detection:
   enabled: true
   # Ngưỡng tự tin của YOLO (60% là mức an toàn để không bắt nhầm)
   confidence_threshold: 0.60
+  min_area_ratio: 0.10
 
   # Chuyển đổi tên vật thể của YOLO thành tên Thư mục của chúng ta
   yolo_mapping:
