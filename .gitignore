@@ -21,4 +21,4 @@ image_links.csv
 Thumbs.db
 .DS_Store
 download_history.db
-*pt
+*.pt
