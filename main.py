@@ -10,33 +10,28 @@ from agent_sorter import run_sorter
 def setup_environment():
     """
     Kịch bản dọn dẹp chiến trường tự động:
-    1. Xóa file CSV cũ (nếu có)
-    2. Dọn sạch folder temp_images (nhưng giữ lại folder gốc)
-    3. Dọn sạch folder resource/unprocessed (nhưng giữ lại các folder đã phân loại khác)
+    Bảo vệ tuyệt đối file dữ liệu trí nhớ 'download_history.db'
     """
     print("🧹 Đang dọn dẹp dữ liệu từ phiên làm việc trước...")
 
-    # 1. Xóa file CSV
     if os.path.exists("image_links.csv"):
         try:
             os.remove("image_links.csv")
-            print("   - Đã xóa file danh sách link (image_links.csv).")
-        except Exception as e:
-            print(f"   - Lỗi khi xóa CSV: {e}")
+        except Exception:
+            pass
 
-    # 2. Dọn sạch folder ảnh tạm (temp_images)
+    # Dọn sạch kho ảnh nháp
     temp_dir = "temp_images"
-    os.makedirs(temp_dir, exist_ok=True)  # Đảm bảo folder tồn tại
+    os.makedirs(temp_dir, exist_ok=True)
     for filename in os.listdir(temp_dir):
         file_path = os.path.join(temp_dir, filename)
         try:
             if os.path.isfile(file_path):
                 os.remove(file_path)
-        except Exception as e:
-            print(f"   - Lỗi khi xóa file tạm {filename}: {e}")
-    print("   - Đã dọn sạch kho ảnh nháp (temp_images).")
+        except Exception:
+            pass
 
-    # 3. Dọn sạch folder rác (resource/unprocessed)
+    # Dọn sạch thùng rác
     quarantine_dir = os.path.join("resource", "unprocessed")
     os.makedirs(quarantine_dir, exist_ok=True)
     for filename in os.listdir(quarantine_dir):
@@ -44,29 +39,29 @@ def setup_environment():
         try:
             if os.path.isfile(file_path):
                 os.remove(file_path)
-        except Exception as e:
+        except Exception:
             pass
-    print("   - Đã dọn sạch thùng rác (resource/unprocessed).")
+
+    print("   - Đã dọn sạch kho nháp và thùng rác (Trí nhớ SQLite được bảo toàn).")
     print("✅ Môi trường đã sẵn sàng!\n")
 
 
 def main():
     print("============================================================")
-    print("🚀 [HỆ THỐNG AGENT V4.2] Phân loại Hybrid (YOLO + CLIP)")
+    print("🚀 [HỆ THỐNG AGENT V5.0] Tối thượng - AsyncIO & SQLite")
     print("============================================================")
 
-    # GỌI HÀM DỌN DẸP TỰ ĐỘNG
     setup_environment()
 
     URL_MUC_TIEU = input("🔗 Nhập URL trang web muốn cào ảnh: ").strip()
     if not URL_MUC_TIEU:
-        URL_MUC_TIEU = "https://vi.wikipedia.org/wiki/Giải_vô_địch_bóng_đá_thế_giới_2026"
+        URL_MUC_TIEU = "https://vi.wikipedia.org/wiki/Du_l%E1%BB%8Bch_Vi%E1%BB%87t_Nam"
 
     CHU_DE_MUC_TIEU = input("🎯 Chủ đề phụ bạn muốn tìm thêm (Enter để bỏ qua): ").strip()
 
     FILE_CSV = "image_links.csv"
     KHO_TAM = "temp_images"
-    GIOI_HAN_TAI = 30
+    GIOI_HAN_TAI = 30  # Bạn có thể tăng lên 100-500 ở V5.0 vì tốc độ rất nhanh
 
     start_time = datetime.now()
     print(f"\n⏰ Bắt đầu lúc: {start_time.strftime('%H:%M:%S')}")
@@ -76,16 +71,16 @@ def main():
         print("\n🕵️ GIAI ĐOẠN 1: Agent Scraper đang thâm nhập...")
         crawl_image_links(URL_MUC_TIEU, FILE_CSV)
 
-        print("\n📥 GIAI ĐOẠN 2: Agent Downloader đang tải ảnh nháp...")
+        print("\n📥 GIAI ĐOẠN 2: Agent Downloader đang kích hoạt tải song song...")
         download_images(FILE_CSV, KHO_TAM, limit=GIOI_HAN_TAI)
 
-        print("\n🤖 GIAI ĐOẠN 3: AI Lai (YOLO + CLIP) phân tích Offline...")
+        print("\n🤖 GIAI ĐOẠN 3: AI Lai phân tích & Tự động đồng bộ GitHub...")
         run_sorter(target_topic=CHU_DE_MUC_TIEU)
 
         end_time = datetime.now()
         duration = end_time - start_time
         print("\n" + "=" * 60)
-        print(f"🎉 HOÀN TẤT THÀNH CÔNG! Đã phân loại và đồng bộ GitHub.")
+        print(f"🎉 HOÀN TẤT THÀNH CÔNG KIẾN TRÚC V5.0!")
         print(f"⏱️ Tổng thời gian vận hành: {duration.seconds} giây.")
         print("=" * 60)
 
