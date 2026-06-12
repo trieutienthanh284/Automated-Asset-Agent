@@ -20,3 +20,5 @@ image_links.csv
 # 6. File rác của hệ điều hành (Windows/Mac)
 Thumbs.db
 .DS_Store
+download_history.db
+*pt
